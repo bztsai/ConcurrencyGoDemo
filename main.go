@@ -28,12 +28,17 @@ func testScenario(label string, set func(), get func() (bool, bool), reset func(
 			set()
 		}()
 
-		done, ok := get()
-		for !done && !ok {
-			done, ok = get()
-		}
-		foundReorder = ok
+		getOkCh := make(chan bool)
+		go func() {
+			defer close(getOkCh)
+			done, ok := get()
+			for !done && !ok {
+				done, ok = get()
+			}
+			getOkCh <- ok
+		}()
 
+		foundReorder = <-getOkCh
 		<-doneCh
 	}
 
@@ -62,10 +67,14 @@ func (t *demoRecord) setTwoInt() {
 }
 
 func (t *demoRecord) readTwoInt() (bool, bool) {
-	if t.val1 == 1 && t.val2 == 2 {
+	v1 := t.val1
+	v2 := t.val2
+
+	if v1 == 1 && v2 == 2 {
 		return true, false
 	}
-	if t.val2 == 2 && t.val1 != 1 {
+	if v1 != 1 && v2 == 2 {
+		fmt.Printf("v1: %d v2: %d\n", v1, v2)
 		return false, true
 	}
 	return false, false
@@ -77,10 +86,14 @@ func (t *demoRecord) setIntArr() {
 }
 
 func (t *demoRecord) readIntArr() (bool, bool) {
-	if t.intArr[0] == 1 && t.intArr[1] == 2 {
+	v1 := t.intArr[0]
+	v2 := t.intArr[1]
+
+	if v1 == 1 && v2 == 2 {
 		return true, false
 	}
-	if t.intArr[1] == 2 && t.intArr[0] != 1 {
+	if v1 != 1 && v2 == 2 {
+		fmt.Printf("v1: %d v2: %d\n", v1, v2)
 		return false, true
 	}
 	return false, false
